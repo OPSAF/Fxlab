@@ -386,7 +386,21 @@ function renderCapture() {
  * ------------------------------------------------------------------ */
 function wireChart() {
   $('#chart-run').addEventListener('click', runChart);
-  $$('#indicator-chips input').forEach((c) => c.addEventListener('change', runChart));
+
+  // 旧内核不支持 :has()，用 .on 类兜底高亮
+  const syncChips = () => {
+    $$('#indicator-chips input').forEach((i) => {
+      const chip = i.closest?.('.chip');
+      if (chip) chip.classList.toggle('on', i.checked);
+    });
+  };
+  syncChips();
+  $$('#indicator-chips input').forEach((c) =>
+    c.addEventListener('change', () => {
+      syncChips();
+      runChart();
+    }),
+  );
 
   // 快捷区间：只改「起始日期」再复用同一条取数路径
   $$('#chart-range button').forEach((btn) => {

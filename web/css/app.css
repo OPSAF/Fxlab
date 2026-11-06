@@ -96,6 +96,7 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
+  min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
@@ -132,6 +133,7 @@ button { font-family: inherit; }
   gap: 18px;
   height: var(--h-topbar);
   padding: 0 20px;
+  background: var(--bg);
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: saturate(1.6) blur(14px);
   -webkit-backdrop-filter: saturate(1.6) blur(14px);
@@ -187,6 +189,7 @@ button { font-family: inherit; }
 .tab.active {
   background: var(--accent-soft);
   color: var(--accent);
+  border-color: var(--accent-soft);
   border-color: color-mix(in srgb, var(--accent) 22%, transparent);
   font-weight: 600;
 }
@@ -202,7 +205,7 @@ button { font-family: inherit; }
   font-family: var(--font-mono);
 }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
-.dot.live { background: var(--up); box-shadow: 0 0 0 3px color-mix(in srgb, var(--up) 18%, transparent); }
+.dot.live { background: var(--up); box-shadow: 0 0 0 3px rgba(10, 143, 91, 0.16); box-shadow: 0 0 0 3px color-mix(in srgb, var(--up) 18%, transparent); }
 .dot.err { background: var(--down); }
 
 .icon-btn {
@@ -343,7 +346,8 @@ main {
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .chip input { accent-color: var(--accent); margin: 0; }
-.chip:has(input:checked) {
+.chip:has(input:checked),
+.chip.on {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 35%, transparent);
   background: var(--accent-soft);
@@ -676,6 +680,7 @@ main {
     display: flex;
     justify-content: space-around;
     gap: 0;
+    background: var(--surface);
     background: color-mix(in srgb, var(--surface) 94%, transparent);
     backdrop-filter: saturate(1.8) blur(16px);
     -webkit-backdrop-filter: saturate(1.8) blur(16px);
