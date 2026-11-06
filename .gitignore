@@ -15,3 +15,6 @@ shots/
 Thumbs.db
 .idea/
 .vscode/
+
+# 仅 pages 分支使用（构建时生成）
+web/js/core/
