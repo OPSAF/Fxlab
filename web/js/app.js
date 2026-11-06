@@ -134,7 +134,9 @@ function redrawVisible() {
 async function init() {
   initTheme();
 
-  MODE = await detectMode();
+  // GitHub Pages 构建时会注入 __FXLAB_STATIC__，省掉一次必然 404 的探测
+  if (window.__FXLAB_STATIC__) MODE = 'static';
+  else MODE = await detectMode();
 
   try {
     state.meta = await api('/api/meta');

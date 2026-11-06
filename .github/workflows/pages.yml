@@ -29,6 +29,18 @@ jobs:
       - name: 同步浏览器端核心模块
         run: node scripts/sync-core.mjs
 
+      # 国内网络访问 api.frankfurter.app（Cloudflare）经常被拦，浏览器端会 CORS 失败。
+      # 所以在构建时把 ECB 日线抓成同源快照，随站点一起发布。
+      - name: 抓取 ECB 日线快照
+        run: node scripts/fetch-ecb.mjs
+        continue-on-error: true
+
+      # 注入静态标记，省掉前端一次必然 404 的后端探测
+      - name: 标记静态构建
+        run: |
+          sed -i 's|<script type="module" src="./js/app.js"></script>|<script>window.__FXLAB_STATIC__=true</script>\n  <script type="module" src="./js/app.js"></script>|' web/index.html
+          grep -q "__FXLAB_STATIC__" web/index.html && echo "✔ 已注入静态标记"
+
       # 只跑不依赖外网的测试：GitHub 的机器访问新浪/东财不稳定，别让网络抖动挡住部署
       - name: 单元测试（不依赖外网）
         run: |

@@ -115,6 +115,65 @@ const spark = new Map(); // symbol -> 最近 120 个价格
 async function loadDaily(symbol, start = '1999-01-04', end = '') {
   const p = pairMap.get(symbol);
   if (!p) throw new Error(`未知货币对 ${symbol}`);
+
+  // 第一优先：构建时生成的同源快照（web/data/ecb/*.json）。
+  // 国内网络访问 Cloudflare（frankfurter.app）经常被拦，表现为 net::ERR_FAILED + CORS 报错，
+  // 所以静态版默认不依赖这个外部接口。
+  const bundled = await loadBundled(symbol);
+  if (bundled && isFresh(bundled.lastDate)) {
+    return sliceBars(bundled.bars, start, end);
+  }
+
+  // 快照过期或缺失时才去撞实时接口；失败就退回快照（有总比没有好）
+  try {
+    const live = await loadDailyLive(symbol, start, end);
+    return live;
+  } catch (e) {
+    if (bundled) {
+      mark('frankfurter', false, 0, `实时不可用，改用本地快照（${bundled.lastDate}）`);
+      return sliceBars(bundled.bars, start, end);
+    }
+    throw new Error(`日线数据不可用：${e.message}`);
+  }
+}
+
+const bundledCache = new Map();
+
+async function loadBundled(symbol) {
+  if (bundledCache.has(symbol)) return bundledCache.get(symbol);
+  try {
+    const r = await fetch(`./data/ecb/${symbol}.json`, { cache: 'force-cache' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json();
+    if (!Array.isArray(j?.bars) || !j.bars.length) throw new Error('快照为空');
+    const payload = { bars: j.bars, lastDate: j.lastDate || j.bars[j.bars.length - 1][0] };
+    bundledCache.set(symbol, payload);
+    return payload;
+  } catch {
+    bundledCache.set(symbol, null);
+    return null;
+  }
+}
+
+/** 快照是否还算新鲜：ECB 只在工作日发布，允许 5 天内的滞后（含周末与假日） */
+function isFresh(lastDate) {
+  if (!lastDate) return false;
+  const d = new Date(`${lastDate}T00:00:00Z`).getTime();
+  if (!Number.isFinite(d)) return false;
+  return Date.now() - d < 5 * 24 * 3600 * 1000;
+}
+
+function sliceBars(bars, start, end) {
+  const s = start || '0000-00-00';
+  const e = end || '9999-99-99';
+  return bars
+    .filter(([d]) => d >= s && d <= e)
+    .map(([date, close]) => ({ date, close }));
+}
+
+/** 实时的 Frankfurter（会走 Cloudflare，可能被墙） */
+async function loadDailyLive(symbol, start, end) {
+  const p = pairMap.get(symbol);
   const key = `daily:${p.from}${p.to}:${start}:${end}`;
   return cached(key, 30 * 60 * 1000, async () => {
     const t0 = Date.now();

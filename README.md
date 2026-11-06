@@ -69,6 +69,12 @@ node tests/run-all.mjs
 浏览器里无论 `fetch` 还是 `<script>` 都取不到。所以 `pages` 分支统一改用东方财富——
 它回显 `Origin` 并允许带凭据，实测 `Access-Control-Allow-Origin: https://opsaf.github.io`。
 
+**为什么 ECB 日线要打包成快照**：`api.frankfurter.app` 挂在 Cloudflare 后面，国内网络经常被拦或重置，
+浏览器端的表现是 `net::ERR_FAILED` + `No 'Access-Control-Allow-Origin' header`（服务端 Node 请求却正常）。
+所以构建时由 `scripts/fetch-ecb.mjs` 把 16 个货币对 1999 年至今的日线抓成
+`web/data/ecb/{SYMBOL}.json`，随站点一起发布——同源、无 CORS 风险。
+前端优先读快照，只有当快照落后超过 5 天（ECB 只在工作日发布）才尝试实时接口，失败再退回快照。
+
 **采集器**：市场页点「开始采集」，服务端会把实时快照聚合成 15s / 1m / 5m K 线并落盘到 `data/bars/`。跑几天，你就有了自己的分钟级数据集——这是教科书上没有的东西。
 
 ### 三种价格不能混用

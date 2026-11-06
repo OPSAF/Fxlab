@@ -22,6 +22,7 @@ const suites = [
   { name: '图表几何', file: 'tests/chart.test.mjs' },
   { name: 'API 接口', file: 'tests/api-smoke.mjs' },
   { name: '服务端 vs 浏览器端对拍', file: 'tests/parity.test.mjs' },
+  { name: '断网下的快照回退', file: 'tests/snapshot.test.mjs' },
   { name: '前端渲染（服务端模式）', file: 'tests/dom-smoke.mjs' },
   { name: '前端渲染（静态托管模式）', file: 'tests/dom-smoke.mjs', env: { FXLAB_MODE: 'static' } },
 ];

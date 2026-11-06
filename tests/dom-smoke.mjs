@@ -195,10 +195,20 @@ el('#bt-train').value = '0.7';
 // 浏览器里 fetch('./api/x') 会相对当前页面解析；Node 里必须补全 base URL
 const BASE = process.env.FXLAB_BASE || 'http://127.0.0.1:8787';
 const realFetch = globalThis.fetch;
-globalThis.fetch = (url, opts) => {
+const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+globalThis.fetch = async (url, opts) => {
   if (typeof url === 'string' && (url.startsWith('/api') || url.startsWith('./api'))) {
     if (MODE === 'static') return Promise.reject(new TypeError('Failed to fetch')); // 模拟没有后端
     return realFetch(BASE + url.replace(/^\./, ''), opts);
+  }
+  // 静态模式的数据快照：浏览器从同源读文件，这里直接读磁盘
+  if (typeof url === 'string' && url.startsWith('./data/')) {
+    try {
+      const buf = await fs.readFile(path.join(ROOT_DIR, 'web', url.slice(2)));
+      return new Response(buf, { status: 200, headers: { 'content-type': 'application/json' } });
+    } catch {
+      return new Response('not found', { status: 404 });
+    }
   }
   return realFetch(url, opts);
 };
