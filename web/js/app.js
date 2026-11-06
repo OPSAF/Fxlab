@@ -113,12 +113,19 @@ function applyTheme(theme, persist = true) {
 /** 只重绘当前可见视图里已经画过的东西，不重新发请求 */
 function redrawVisible() {
   if (!state.meta) return; // 首屏：meta 还没回来，先别画，否则会读到 null
-  renderPairs();
-  if (state.liveBars) drawLiveChart(state.liveBars, state.digitsOf(state.selected), state.liveLabel);
-  if (state.chartData) drawChartView();
-  if (state.bt) renderBacktest(state.bt);
-  if (state.stats) renderStats(state.stats);
-  if (state.grid) drawGridCharts(state.grid);
+  const guard = (fn) => {
+    try {
+      fn();
+    } catch (e) {
+      console.warn('[redraw]', e);
+    }
+  };
+  guard(renderPairs);
+  if (state.liveBars) guard(() => drawLiveChart(state.liveBars, state.digitsOf(state.selected), state.liveLabel));
+  if (state.chartData) guard(drawChartView);
+  if (state.bt) guard(() => renderBacktest(state.bt));
+  if (state.stats) guard(() => renderStats(state.stats));
+  if (state.grid) guard(() => drawGridCharts(state.grid));
 }
 
 /* ------------------------------------------------------------------ *
@@ -163,6 +170,9 @@ async function init() {
   loadLog();
   setInterval(refreshHealth, 12000);
   refreshHealth();
+  // 首屏的图表是在各自视图隐藏时画的，等布局稳定后补画一次
+  requestAnimationFrame(() => setTimeout(redrawVisible, 120));
+  window.addEventListener('resize', debounce(redrawVisible, 250));
 }
 
 function wireTabs() {
@@ -181,8 +191,14 @@ function activateView(name) {
   if (!target) return;
   $$('.tab').forEach((t) => t.classList.toggle('active', t === target));
   $$('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${name}`));
-  // 切换视图后重绘：canvas 在隐藏状态下尺寸是 0，必须重新量一次
-  setTimeout(() => window.dispatchEvent(new Event('resize')), 30);
+
+  // 关键：视图从 display:none 变成可见之后，<canvas> 才有真实尺寸。
+  // 隐藏状态下画的图是「画布宽高为 0」的无效绘制，所以每次切换都要重画一遍。
+  requestAnimationFrame(() => {
+    redrawVisible();
+    // 移动端从隐藏切回来时布局可能晚一帧，再补一次
+    setTimeout(redrawVisible, 80);
+  });
 }
 
 function fillSelects() {
@@ -236,6 +252,14 @@ async function refreshQuotes() {
     if (q.error) setStatus(false, `数据源异常：${q.error}`);
   } catch (e) {
     setStatus(false, `离线：${e.message}`);
+    // 手机上状态栏只显示一个红点，看不清原因；静态模式下额外弹一次提示（每分钟最多一次）
+    if (MODE === 'static') {
+      const now = Date.now();
+      if (now - (refreshQuotes._lastToast || 0) > 60000) {
+        refreshQuotes._lastToast = now;
+        toast(`行情获取失败：${e.message}`, true);
+      }
+    }
   }
 }
 
@@ -876,3 +900,21 @@ function renderLessons() {
 
 /* 启动 */
 init();
+
+/**
+ * 挂一个只读调试入口：线上排查时在控制台敲 __fxlab 就能看到运行模式与状态，
+ * 不用去翻压缩后的代码。也可以手动 __fxlab.redraw() 强制重画。
+ */
+try {
+  window.__fxlab = {
+    get mode() {
+      return MODE;
+    },
+    get state() {
+      return { selected: state.selected, quotes: state.quotes.size, hasBacktest: !!state.bt, hasChart: !!state.chartData };
+    },
+    redraw: redrawVisible,
+  };
+} catch {
+  /* 忽略 */
+}

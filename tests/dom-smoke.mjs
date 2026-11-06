@@ -273,6 +273,7 @@ check('VaR 表已填充', el('#st-var tbody') === undefined || true);
 check('策略参数面板已生成', el('#bt-params').innerHTML.includes('data-param="fast"'));
 check('图表标题已更新', el('#chart-title').textContent !== '载入中…' && el('#chart-title').textContent.length > 0, `${el('#chart-title').textContent} | meta: ${el('#chart-meta').textContent}`);
 check('SSE / 轮询已建立', MODE === 'static' ? !EventSourceStub.instance : !!EventSourceStub.instance, MODE === 'static' ? '静态模式用轮询，不建 SSE' : 'SSE 已连接');
+check('运行模式判定正确', globalThis.window.__fxlab?.mode === MODE, `__fxlab.mode = ${globalThis.window.__fxlab?.mode}`);
 check('主题切换生效', themeBefore !== themeAfter, `${themeBefore} → ${themeAfter}`);
 check('主题写入本地存储', globalThis.localStorage.getItem('fxlab-theme') === themeAfter);
 
