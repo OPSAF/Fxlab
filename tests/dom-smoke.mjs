@@ -192,18 +192,27 @@ for (const s of ['#bt-start', '#chart-start', '#st-start']) el(s).value = '2015-
 el('#bt-cost').value = '1';
 el('#bt-train').value = '0.7';
 
-// 浏览器里 fetch('/api/x') 会相对当前页面解析；Node 里必须补全 base URL
+// 浏览器里 fetch('./api/x') 会相对当前页面解析；Node 里必须补全 base URL
 const BASE = process.env.FXLAB_BASE || 'http://127.0.0.1:8787';
 const realFetch = globalThis.fetch;
-globalThis.fetch = (url, opts) =>
-  realFetch(typeof url === 'string' && url.startsWith('/') ? `${BASE}${url}` : url, opts);
+globalThis.fetch = (url, opts) => {
+  if (typeof url === 'string' && (url.startsWith('/api') || url.startsWith('./api'))) {
+    if (MODE === 'static') return Promise.reject(new TypeError('Failed to fetch')); // 模拟没有后端
+    return realFetch(BASE + url.replace(/^\./, ''), opts);
+  }
+  return realFetch(url, opts);
+};
 
-try {
-  const r = await realFetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(3000) });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-} catch {
-  console.error(`\n服务端未启动（${BASE}）。先运行 node server/index.mjs，或直接用 node tests/run-all.mjs\n`);
-  process.exit(1);
+// FXLAB_MODE=static 时不要求后端：模拟「把前端原样丢到 GitHub Pages 上」的情形
+const MODE = process.env.FXLAB_MODE || 'server';
+if (MODE === 'server') {
+  try {
+    const r = await realFetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(3000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  } catch {
+    console.error(`\n服务端未启动（${BASE}）。先运行 node server/index.mjs，或直接用 node tests/run-all.mjs\n`);
+    process.exit(1);
+  }
 }
 
 process.on('unhandledRejection', (e) => errors.push(`unhandledRejection: ${e?.stack || e}`));
@@ -263,7 +272,7 @@ check('统计卡片已填充', el('#st-metrics').innerHTML.includes('Hurst'));
 check('VaR 表已填充', el('#st-var tbody') === undefined || true);
 check('策略参数面板已生成', el('#bt-params').innerHTML.includes('data-param="fast"'));
 check('图表标题已更新', el('#chart-title').textContent !== '载入中…' && el('#chart-title').textContent.length > 0, `${el('#chart-title').textContent} | meta: ${el('#chart-meta').textContent}`);
-check('SSE 已建立连接', !!EventSourceStub.instance);
+check('SSE / 轮询已建立', MODE === 'static' ? !EventSourceStub.instance : !!EventSourceStub.instance, MODE === 'static' ? '静态模式用轮询，不建 SSE' : 'SSE 已连接');
 check('主题切换生效', themeBefore !== themeAfter, `${themeBefore} → ${themeAfter}`);
 check('主题写入本地存储', globalThis.localStorage.getItem('fxlab-theme') === themeAfter);
 

@@ -21,7 +21,9 @@ const suites = [
   { name: '量化内核', file: 'tests/quant.test.mjs' },
   { name: '图表几何', file: 'tests/chart.test.mjs' },
   { name: 'API 接口', file: 'tests/api-smoke.mjs' },
-  { name: '前端渲染', file: 'tests/dom-smoke.mjs' },
+  { name: '服务端 vs 浏览器端对拍', file: 'tests/parity.test.mjs' },
+  { name: '前端渲染（服务端模式）', file: 'tests/dom-smoke.mjs' },
+  { name: '前端渲染（静态托管模式）', file: 'tests/dom-smoke.mjs', env: { FXLAB_MODE: 'static' } },
 ];
 
 console.log(`\n启动测试服务 @ ${BASE} …`);
@@ -57,7 +59,7 @@ for (const s of suites) {
   const r = spawnSync(node, [s.file], {
     cwd: ROOT,
     stdio: 'inherit',
-    env: { ...process.env, FXLAB_BASE: BASE },
+    env: { ...process.env, FXLAB_BASE: BASE, ...(s.env || {}) },
   });
   results.push({ ...s, code: r.status ?? 1 });
 }

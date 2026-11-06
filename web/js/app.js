@@ -6,6 +6,25 @@
  */
 import { priceChart, lineChart, histogramChart, acfChart, heatmap, sparkline, setupCanvas } from './chart.js';
 import { LESSONS } from './lessons.js';
+import { staticApi } from './static-api.mjs';
+
+/* ------------------------------------------------------------------ *
+ * 运行模式：有后端就用后端；没有（例如 GitHub Pages）就用浏览器直连数据源
+ * ------------------------------------------------------------------ */
+let MODE = 'server';
+
+async function detectMode() {
+  try {
+    const r = await fetch('./api/meta', { headers: { accept: 'application/json' } });
+    if (!r.ok) return 'static';
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) return 'static';
+    const j = await r.json();
+    return Array.isArray(j?.pairs) ? 'server' : 'static';
+  } catch {
+    return 'static';
+  }
+}
 
 /* ------------------------------------------------------------------ *
  * 工具
@@ -37,6 +56,7 @@ function toast(msg, isErr = false) {
 }
 
 async function api(path, body) {
+  if (MODE === 'static') return staticApi(path, body);
   const init = body === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
   const r = await fetch(path, init);
   const j = await r.json().catch(() => ({}));
@@ -106,6 +126,8 @@ function redrawVisible() {
  * ------------------------------------------------------------------ */
 async function init() {
   initTheme();
+
+  MODE = await detectMode();
 
   try {
     state.meta = await api('/api/meta');
@@ -178,7 +200,14 @@ function fillSelects() {
  * 实时行情（SSE）
  * ------------------------------------------------------------------ */
 function connectStream() {
-  const es = new EventSource('/api/stream');
+  if (MODE === 'static') {
+    // 静态托管没有 SSE，改为浏览器定时拉取（东财一次请求可取回全部货币对）
+    setStatus(true, '静态模式 · 浏览器直连');
+    refreshQuotes();
+    setInterval(refreshQuotes, 5000);
+    return;
+  }
+  const es = new EventSource('./api/stream');
   es.addEventListener('quotes', (ev) => {
     state.sseOk = true;
     const payload = JSON.parse(ev.data);
@@ -232,6 +261,10 @@ function applyQuotes(quotes, at) {
  * ------------------------------------------------------------------ */
 function wireMarket() {
   $('#capture-btn').addEventListener('click', async () => {
+    if (MODE === 'static') {
+      toast('静态托管版没有后端，无法落盘采集；请用服务端分支或本地运行', true);
+      return;
+    }
     const on = state.capture?.active;
     try {
       const r = await api('/api/capture', { action: on ? 'stop' : 'start', symbol: state.selected });
@@ -371,6 +404,14 @@ function renderCapture() {
   const c = state.capture;
   const btn = $('#capture-btn');
   if (!c) return;
+  if (c.supported === false) {
+    btn.disabled = true;
+    btn.textContent = '静态模式无采集';
+    btn.title = '采集需要常驻后端进程；静态托管版请用服务端分支或本地运行';
+    $('#capture-detail').innerHTML = '<dt>状态</dt><dd>不支持</dd><dt>原因</dt><dd>采集需要服务端进程</dd>';
+    return;
+  }
+  btn.disabled = false;
   btn.textContent = c.active ? '停止采集' : '开始采集';
   btn.classList.toggle('primary', c.active);
   $('#capture-detail').innerHTML = `

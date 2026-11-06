@@ -1,5 +1,15 @@
 # FX 量化实验室（fxlab）
 
+> **你正在看的是 `pages` 分支 —— 纯静态版，用 GitHub Pages 部署。**
+>
+> | 分支 | 形态 | 部署 | 数据来源 | 采集器 |
+> |---|---|---|---|---|
+> | `main` | Node 服务端 | Render / Docker / 本地 | 新浪实时 + ECB + 东财 | ✅ 支持 |
+> | **`pages`（当前）** | 纯前端，无后端 | GitHub Pages | 东财实时 + ECB + 东财分钟线 | ❌ 不支持 |
+>
+> 两个分支的量化内核、UI、课程完全相同，差别只在「谁来抓数据、谁来算」。
+> 详见第 10 节。
+
 一个**以学习为目的**的外汇量化工作台：实时行情、指标可视化、策略回测、统计检验，全部跑在本地，零第三方依赖（只用 Node 内置模块 + 原生 Canvas）。
 
 > 它不追求「帮你赚钱」，追求的是「让你能用证据判断一个想法值不值得下注」。
@@ -50,10 +60,14 @@ node tests/run-all.mjs
 
 | 源 | 内容 | 频率 | 局限 |
 |---|---|---|---|
-| **新浪财经** `hq.sinajs.cn` | 16 个货币对实时报价（bid/ask/开高低/昨收） | 服务端每 3 秒轮询 | 是「看到的价」，非可成交价；GBK 编码；需 Referer |
+| **东方财富** `push2.eastmoney.com` | 16 个货币对实时报价（一次请求取回）+ 当日分钟线 | 秒级 | 无 52 周高低；分钟线只有当天 |
 | **ECB / Frankfurter** `api.frankfurter.app` | 日线，可回溯到 1999 年 | 每工作日 1 个收盘价 | **只有收盘价**，无开高低、无成交量 |
-| **东方财富** `push2.eastmoney.com` | 当日分钟线 OHLC | 每分钟 | **只有今天**，历史分钟线要靠自己采集 |
+| **新浪财经** `hq.sinajs.cn` | 实时 bid/ask（**仅 `main` 分支**） | 服务端每 3 秒轮询 | 无 CORS、校验 Referer，浏览器拿不到 |
 | **内置模拟器** | GBM 随机游走（参数可复现） | 任意 | 是模型，不是市场；用来做对照实验 |
+
+**为什么静态版不用新浪**：它的响应没有 `Access-Control-Allow-Origin`，且非 sina 域名的 Referer 一律 403，
+浏览器里无论 `fetch` 还是 `<script>` 都取不到。所以 `pages` 分支统一改用东方财富——
+它回显 `Origin` 并允许带凭据，实测 `Access-Control-Allow-Origin: https://opsaf.github.io`。
 
 **采集器**：市场页点「开始采集」，服务端会把实时快照聚合成 15s / 1m / 5m K 线并落盘到 `data/bars/`。跑几天，你就有了自己的分钟级数据集——这是教科书上没有的东西。
 
@@ -104,8 +118,15 @@ fxlab/
 ├── web/
 │   ├── index.html
 │   ├── css/app.css            双主题（浅色纸面 / 深色夜读）+ 移动端底部导航
-│   └── js/{app,chart,lessons}.js
-├── tests/                     77 项检查，见下
+│   └── js/
+│       ├── app.js             视图与交互
+│       ├── chart.js           Canvas 图表引擎
+│       ├── lessons.js         10 节课程
+│       ├── static-api.mjs     无后端时的浏览器端数据层与计算层
+│       └── core/              由 scripts/sync-core.mjs 生成，不入库
+├── scripts/sync-core.mjs      把 server/core 复制成浏览器可用的模块
+├── tests/                     6 组测试，见下
+├── .github/workflows/pages.yml  Pages 自动部署
 ├── data/                      缓存、采集的 K 线、实验记录（运行时生成，不入库）
 ├── notes/教学笔记.md
 ├── Dockerfile                 容器镜像（可选）
@@ -144,7 +165,9 @@ fxlab/
 | 量化内核 | 23 | 指标手算核对、无未来函数、成本口径、OLS、Hurst/ADF、聚合器 |
 | 图表几何 | 8 | 用「录制型 canvas」断言蜡烛根数、坐标不越界、轴刻度方向 |
 | API 接口 | 34 | 真实 HTTP 打每个端点，校验字段与数值合理性 |
-| 前端渲染 | 12 | Node 里的最小 DOM 桩，真跑 `app.js` 走完初始化与各页交互 |
+| 服务端 vs 浏览器端对拍 | 14 | 同一组参数跑两条计算路径，逐字段比对（抓出过 1 根 K 线的口径差异） |
+| 前端渲染（服务端模式） | 12 | Node 最小 DOM 桩，真跑 `app.js` 走完初始化与各页交互 |
+| 前端渲染（静态托管模式） | 12 | 模拟没有后端，验证自动降级与浏览器直连 |
 
 **没有验证到的**：真实浏览器里的像素级排版。本机沙箱禁止命名管道，Chrome/Edge 无法启动（`mojo platform_channel` 被拒），所以 CSS 的实际视觉效果请你在浏览器里过一眼。逻辑与数据链路已验证。
 
@@ -169,37 +192,32 @@ fxlab/
 
 ---
 
-## 10. 部署：手机上也能量化学习
+## 10. 部署：两条路线，各取所需
 
-前端是静态文件，但**实时行情必须有个常驻 Node 进程**（浏览器直连新浪会被 CORS 和 Referer 挡掉）。所以 GitHub Pages 只能托管页面、拿不到数据；要「手机打开就能用」，得把整个服务部署上去。
+### 路线 A：GitHub Pages（当前分支 `pages`，免费、无需服务器）
 
-### 方案 A：Render 免费实例（推荐，仓库已带 `render.yaml`）
+前端是纯静态的，数据由浏览器直连东财与 ECB，所以可以完全托管在 Pages 上。
 
-1. 打开 [render.com](https://render.com) → 用 GitHub 登录；
-2. **New → Blueprint** → 选 `OPSAF/Fxlab` 仓库 → Render 自动读取 `render.yaml`；
-3. 部署完成后拿到形如 `https://fxlab-xxxx.onrender.com` 的地址，手机浏览器直接打开。
+**一次性配置**（在 GitHub 网页上操作）：
 
-免费实例**闲置约 15 分钟会休眠**，下次打开需要 30–60 秒冷启动。想让它随开随用，可以：
+1. 仓库 → **Settings → Pages**；
+2. **Source** 选 **GitHub Actions**（不要选 "Deploy from a branch"）；
+3. 推到 `pages` 分支后，`.github/workflows/pages.yml` 会自动：
+   同步核心模块 → 跑单元测试 → 上传 `web/` → 发布；
+4. 一分钟后地址是 `https://<用户名>.github.io/Fxlab/`。
 
-- 用 [cron-job.org](https://cron-job.org) 每 5 分钟 ping 一次 `https://你的域名/api/health`（免费）；
-- 或者接受冷启动，打开时先等半分钟。
+**代价**（相对服务端版）：
+- 没有 SSE，改成每 5 秒轮询东财（一次请求取回 16 个货币对，流量很小）；
+- 没有采集器（落盘需要常驻进程）；
+- 实验记录存在浏览器 `localStorage`，换设备不同步；
+- 新浪实时报价不可用（CORS 限制）。
 
-### 方案 B：任意 Docker 主机
+### 路线 B：Render / Docker（`main` 分支）
 
-```bash
-docker build -t fxlab .
-docker run -d -p 8787:8787 --name fxlab fxlab
-```
+`main` 分支带 `render.yaml`，New → Blueprint 选仓库即可；也可以用 `Dockerfile`。
 
-数据落在容器内 `/app/data`；要长期保留采集数据，挂一个卷：`-v fxlab-data:/app/data`。
-
-### 环境变量
-
-| 变量 | 默认 | 说明 |
-|---|---|---|
-| `PORT` | 8787 | 平台通常会注入；一旦存在，服务自动监听 `0.0.0.0` |
-| `FXLAB_HOST` | 见上 | 强制指定监听地址 |
-| `FXLAB_POLL_MS` | 3000 | 新浪行情轮询间隔（毫秒） |
+免费实例闲置 15 分钟休眠，冷启动 30–60 秒。想随开随用，用 [cron-job.org](https://cron-job.org)
+每 5 分钟 ping 一次 `/api/health`。
 
 ### 手机上的使用建议
 

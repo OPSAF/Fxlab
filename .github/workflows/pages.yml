@@ -1,0 +1,52 @@
+name: 部署到 GitHub Pages
+
+# 只在 pages 分支上触发：main 分支保持「服务端版」，两条线互不干扰。
+on:
+  push:
+    branches: [pages]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 把服务端的量化内核搬进 web/js/core/（部署产物里才有）
+      - name: 同步浏览器端核心模块
+        run: node scripts/sync-core.mjs
+
+      # 只跑不依赖外网的测试：GitHub 的机器访问新浪/东财不稳定，别让网络抖动挡住部署
+      - name: 单元测试（不依赖外网）
+        run: |
+          node tests/quant.test.mjs
+          node tests/chart.test.mjs
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
