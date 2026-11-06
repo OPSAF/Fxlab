@@ -1,0 +1,21 @@
+# Render 一键部署配置
+# 用法：在 Render 控制台 New → Blueprint，选这个仓库即可。
+# 免费实例闲置会休眠，冷启动约 30–60 秒；手机端刷新几次就醒了。
+
+services:
+  - type: web
+    name: fxlab
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: echo "无需构建：本项目零依赖"
+    startCommand: node server/index.mjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # 轮询间隔（毫秒）。调大可降低对上游的压力，调小则行情更实时
+      - key: FXLAB_POLL_MS
+        value: "3000"

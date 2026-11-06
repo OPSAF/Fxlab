@@ -1,0 +1,7 @@
+node_modules
+data
+shots
+.chrome-profile
+.git
+*.log
+.DS_Store

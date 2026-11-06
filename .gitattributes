@@ -1,0 +1,8 @@
+# 统一换行符：代码一律 LF（Docker/Linux 上更安全）
+* text=auto eol=lf
+
+# 二进制文件不做换行转换
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary

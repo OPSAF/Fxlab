@@ -1,0 +1,15 @@
+{
+  "name": "fxlab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "FX 量化实验室：实时行情 + 指标 + 回测 + 统计检验的教学型工作台（零依赖）",
+  "scripts": {
+    "start": "node server/index.mjs",
+    "dev": "node --watch server/index.mjs",
+    "test": "node tests/run-all.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

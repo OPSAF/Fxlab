@@ -1,0 +1,17 @@
+# 运行时数据：缓存、采集的 K 线、实验记录，都不入库
+data/
+
+# 依赖与构建产物
+node_modules/
+dist/
+build/
+
+# 本地临时文件
+*.log
+*.tmp
+shots/
+.chrome-profile/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
