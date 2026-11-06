@@ -901,6 +901,17 @@ function renderLessons() {
 }
 
 /* 启动 */
+// 兜底：任何未捕获的异常都弹出来。手机上打不开控制台，没这个只能靠猜。
+let lastErrToast = 0;
+function reportError(prefix, err) {
+  const now = Date.now();
+  if (now - lastErrToast < 8000) return;
+  lastErrToast = now;
+  toast(`${prefix}：${err?.message || String(err)}`.slice(0, 90), true);
+}
+window.addEventListener('error', (e) => reportError('脚本错误', e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => reportError('请求失败', e.reason));
+
 init();
 
 /**

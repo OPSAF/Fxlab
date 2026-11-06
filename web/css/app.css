@@ -666,6 +666,11 @@ main {
     height: 52px;
     padding: 0 14px;
     gap: 10px;
+    /* 必须关掉：backdrop-filter 会让 .topbar 成为 fixed 子元素的包含块，
+       底部导航就会被塞进顶栏盒子里、而不是贴在屏幕底部 */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--bg);
   }
   .brand-text em { display: none; }
   .brand-text b { font-size: 15px; }
