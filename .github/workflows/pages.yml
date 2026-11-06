@@ -36,6 +36,10 @@ jobs:
           node tests/chart.test.mjs
 
       - uses: actions/configure-pages@v5
+        with:
+          # 首次部署时仓库里还没有 Pages 站点记录，GET /pages 会 404；
+          # enablement: true 允许这个 Action 直接把站点建出来（需要 pages: write）
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
