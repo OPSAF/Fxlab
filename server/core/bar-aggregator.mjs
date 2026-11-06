@@ -11,12 +11,8 @@
  *  - 同一时间桶内的快照，先到的是 open，最新的是 close，最大/最小是 high/low；
  *  - 时间桶按 UTC 向上取整对齐（5s/15s/1m/5m），跨天自动换桶。
  */
-export const TIMEFRAMES = {
-  '5s': 5000,
-  '15s': 15000,
-  '1m': 60000,
-  '5m': 300000,
-};
+export { TIMEFRAMES } from './pairs.mjs';
+import { TIMEFRAMES } from './pairs.mjs';
 
 export class BarAggregator {
   /**

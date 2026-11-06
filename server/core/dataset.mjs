@@ -8,45 +8,11 @@
  */
 import { fetchDaily } from '../providers/frankfurter.mjs';
 import { fetchIntraday } from '../providers/eastmoney.mjs';
-import { simulateDaily, simulateIntraday } from '../providers/simulator.mjs';
-import { pairMap } from '../config.mjs';
+import { simulateDaily, simulateIntraday } from './simulator.mjs';
+import { pairMap, SOURCES, sourceInfo } from './pairs.mjs';
 
-export const SOURCES = [
-  {
-    id: 'ecb',
-    name: 'ECB 日线（Frankfurter）',
-    hasOhlc: false,
-    annualBars: 252,
-    tf: '1d',
-    note: '欧央行每日参考汇率，工作日 16:00 CET 左右更新；只有收盘价，无开高低。数据可回溯到 1999 年。',
-    credit: 'api.frankfurter.app',
-  },
-  {
-    id: 'em',
-    name: '东方财富分钟线（当日）',
-    hasOhlc: true,
-    annualBars: 252 * 1440,
-    tf: '1m',
-    note: '当天 06:00（北京时间）起的逐分钟 OHLC。只有「今天」，历史分钟线要靠本项目自己采集积累。',
-    credit: 'push2.eastmoney.com',
-  },
-  {
-    id: 'sim',
-    name: '模拟器（GBM 随机游走）',
-    hasOhlc: true,
-    annualBars: 252,
-    tf: '1d',
-    note: '几何布朗运动生成，参数可复现。真实参数已知——用来检验「策略到底抓到了信号，还是在拟合噪声」。',
-    credit: 'fxlab 内置',
-  },
-];
-
-export const sourceMap = new Map(SOURCES.map((s) => [s.id, s]));
-
-export function sourceInfo(id) {
-  return sourceMap.get(id) ?? SOURCES[0];
-}
-
+// 数据源元数据只有一份，放在 pairs.mjs（浏览器端也要用同一份文案）
+export { SOURCES, sourceInfo };
 /**
  * @param {object} o
  * @param {string} o.symbol 货币对

@@ -11,7 +11,7 @@ import { runBacktest, evaluate, gridSearch } from '../server/core/backtest.mjs';
 import { logReturns, ols, quantile, mean, stddev } from '../server/core/mathx.mjs';
 import { BarAggregator, resample } from '../server/core/bar-aggregator.mjs';
 import { analyze, hurst, halfLife } from '../server/core/stats.mjs';
-import { simulateDaily } from '../server/providers/simulator.mjs';
+import { simulateDaily } from '../server/core/simulator.mjs';
 
 const mkBars = (prices) => prices.map((c, i) => ({ date: `2024-01-${String(i + 1).padStart(2, '0')}`, open: c, high: c, low: c, close: c }));
 

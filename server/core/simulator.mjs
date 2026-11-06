@@ -12,7 +12,7 @@
  * 参数按货币对给出年化波动率量级（EURUSD ≈ 8%，USDJPY ≈ 10%，新兴市场更高）。
  * 用 seed 保证可复现：同一个 seed 永远生成同一条路径。
  */
-import { pairMap } from '../config.mjs';
+import { pairMap } from './pairs.mjs';
 
 const ANNUAL_VOL = {
   EURUSD: 0.08, GBPUSD: 0.09, USDJPY: 0.10, USDCHF: 0.08, AUDUSD: 0.10, USDCAD: 0.08,
